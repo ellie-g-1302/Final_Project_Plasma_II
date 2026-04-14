@@ -56,7 +56,7 @@ def calc_theta(tele, nion):
     return theta
     
 def calc_mu(tele, nion):
-    theta = calc_theta(tele, nion)
+    theta = calc_theta(tele, nion)    
     A = -3./2. * math.log((theta), math.e)
     B = math.log((4./3./math.sqrt(math.pi)), math.e)
     C = 0.25054 * theta ** (-1.858) + 0.072 * theta ** (-1.858/2.0)
@@ -85,14 +85,25 @@ def LeeMoreConductivity(z, nele, T, Tion):
     return K
 
 ## Data -----------------------------------
-nele = np.linspace(1e21,1e22,200)
+nele = np.linspace(1e21,1e30,200)
 Z = 1
-T = 23209050.0123
-ll = []
+T = 23209 
+Tion = 20000
+LS = []
+LM = []
 for i in range(len(nele)):
-    ll.append(LeeMoreConductivity(Z, nele[i], T, T))
+    LS.append(SpizterConductivity(T, nele[i], Z))
+    LM.append(LeeMoreConductivity(Z, nele[i], T, Tion))
     
-plt.plot(nele, ll)
-plt.show()
     
+plt.plot(nele, LS, c = "#940034", label = "Spitzer")
+plt.plot(nele, LM, c = "#B9A6FF", label="LeeMore")
+plt.title("Thermal Conductivity")
+plt.xlabel("Electron Density")
+plt.legend()
+plt.ylabel("Thermal Conductivity")
+# plt.yscale("log")
+# plt.xscale("log")
+plt.savefig("/Users/admin/Desktop/Plasma/nolog.png", dpi = 800)
 
+    
