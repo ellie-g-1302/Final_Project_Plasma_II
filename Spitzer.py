@@ -44,7 +44,29 @@ def eq_time(nele, zbar, tele, logLambda):
     denom = (hx_boltz * tele) ** (3/2)
     return A * (num / denom)
 
-def LeeMoreConductivity(mu_div_kT, tau, m, z, T, Tion):
+
+def calc_fermi_energy(nion):
+    fermi_energy = hx_hbar ** 2.0 * (3.0 * math.pi ** 2.0 * nion) ** (2./3.) / 2.0 / hx_mele
+    return fermi_energy
+  
+
+def calc_theta(tele, nion):
+    fermi_energy = calc_fermi_energy(nion)
+    theta = (tele * hx_boltz) / fermi_energy
+    return theta
+    
+def calc_mu(tele, nion):
+    theta = calc_theta(tele, nion)
+    A = -3./2. * math.log((theta), math.e)
+    B = math.log((4./3./math.sqrt(math.pi)), math.e)
+    C = 0.25054 * theta ** (-1.858) + 0.072 * theta ** (-1.858/2.0)
+    D = 1 + 0.25054 * theta ** (-0.858)
+    mu_ichimaru = (A + B + C/D)
+    return -mu_ichimaru
+
+def LeeMoreConductivity(z, nele, T, Tion):
+    nion = nele/z
+    mu_div_kT = calc_mu(Tion, nion)
     tau = eq_time(nele, z, T, loglambdaLeeMore(T, nele, Tion, z))
     a1 = 13.5
     a2 = 0.976
@@ -59,7 +81,7 @@ def LeeMoreConductivity(mu_div_kT, tau, m, z, T, Tion):
         y = np.log(1 + np.exp(mu_div_kT))
     
     A_beta = (a1 + a2*y + a3*y**2 ) / (1 + b2*y + b3*y**2)  
-    K = (nele*hx_boltz(hx_boltz * T) * tau) / m * A_beta
+    K = (nele*hx_boltz*(hx_boltz * T) * tau) / hx_mele * A_beta
     return K
 
 ## Data -----------------------------------
@@ -68,8 +90,9 @@ Z = 1
 T = 23209050.0123
 ll = []
 for i in range(len(nele)):
-    ll.append(loglambdaLeeMore(T, nele[i], T, Z))
+    ll.append(LeeMoreConductivity(Z, nele[i], T, T))
     
 plt.plot(nele, ll)
 plt.show()
     
+
