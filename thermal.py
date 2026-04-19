@@ -59,7 +59,7 @@ class Conductivity:
 
 
     def calc_U_two(self):
-        theta = Conductivity.calc_theta(self,tele, nion)
+        theta = Conductivity.calc_theta(self)
         mu = Conductivity.calc_mu(self,theta)
         val = 0
     
@@ -259,29 +259,38 @@ class Conductivity:
         ll = Conductivity.calcLogLambda(self, key)
         val = (4/3) * (2 * np.pi / self.hx_mele) ** (1/2)
         num = self.ne * self.Z * self.hx_qele ** 4 * ll
-        denom = (self.hx_boltz * tele) ** (3/2)
+        denom = (self.hx_boltz * self.Te) ** (3/2)
         return val * (num / denom), ll
+    
+    def LeeMoreConductivity(self, key):
+        mu_div_kT = Conductivity.calc_mu(self)
+        tau = Conductivity.eq_time(self, key)[0]
+        a1 = 13.5
+        a2 = 0.976
+        a3 = 0.437
+        b2 = 0.51
+        b3 = 0.126
+        if mu_div_kT > 20:
+            y = mu_div_kT
+        elif mu_div_kT < -15:
+            y = np.exp(mu_div_kT)
+        else:
+            y = np.log(1 + np.exp(mu_div_kT))
+        
+        A_beta = (a1 + a2*y + a3*y**2 ) / (1 + b2*y + b3*y**2)  
+        K = (self.ne*self.hx_boltz*(self.hx_boltz * self.Te) * tau) / self.hx_mele * A_beta
+        return K
+    
+    def SpizterConductivity(self, key):
+        ll = self.calcLogLambda(self, key)
+        const = (8/np.pi) ** (3/2) * (self.hx_boltz**(7/2) / (self.hx_qele**4 * (self.hx_mele) ** (1/2)))
+        sigma = (1/(1+3.3/self.Z)) * (self.Te**(5/2)/(self.Z*ll))
+        return const * sigma
+
             
     def cyclotron_frequency(self, B):
         cyc_freq = self.hx_qele * B / self.calc_beta_eff_approxhx_mele
         return cyc_freq
-
-    
-
-## Running the functions (Test)
-tele = 250 * 11600
-tion = 300 * 1160
-nele = np.linspace(1e21,1e30,100)
-Z = 1
-A = 2.5
-nion = Z * nele
-
-thermCon = Conductivity(tele, tion, nion, nele, Z, A)
-llGMS = thermCon.eq_time("GMS")
-plt.plot(nele, llGMS[1])
-plt.xscale("log")
-plt.show()
-
 
 
 
