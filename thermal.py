@@ -60,7 +60,7 @@ class Conductivity:
 
     def calc_U_two(self):
         theta = Conductivity.calc_theta(self)
-        mu = Conductivity.calc_mu(self,theta)
+        mu = Conductivity.calc_mu(self)
         val = 0
     
         mup = [1.0, mu, mu ** 2, mu ** 3, mu ** 4, mu **5 , mu ** 6]
@@ -82,7 +82,7 @@ class Conductivity:
     def calc_beta_eff_approx(self):
       fermi_energy = Conductivity.calc_fermi_energy(self)
       p = 2
-      beta_eff_approx = 1. / ((self.Te * self.x_boltz) ** p + (2./3. * fermi_energy) ** p) ** (1./p)
+      beta_eff_approx = 1. / ((self.Te * self.hx_boltz) ** p + (2./3. * fermi_energy) ** p) ** (1./p)
 
       return beta_eff_approx
 
@@ -124,7 +124,7 @@ class Conductivity:
         gamma_eff = beta_eff / beta_i
         lambda_val = self.Z / (gamma_eff * eta ** 2 * (self.hx_mele / mion + gamma))
 
-        f_tilda = Conductivity.calc_f_tilda(1.0/lambda_val, self.Te, self.ni) 
+        f_tilda = Conductivity.calc_f_tilda(self, 1.0/lambda_val) 
 
         A = -4./3. * self.hx_qele ** 4 * self.Z ** 2 * self.hx_mele ** 2 * np.exp(-mu) / np.pi / self.hx_hbar ** 3 / beta_e / mion
         B = self.Ti / self.Te - 1
@@ -136,7 +136,7 @@ class Conductivity:
 
     def logLambda_qLB(self):
         theta = Conductivity.calc_theta(self)
-        mu = Conductivity.calc_mu(self, theta)
+        mu = Conductivity.calc_mu(self)
         dT = Conductivity.calc_dTi_dt_Scullard(self)
         
         mion = self.A * 1.6e-24
@@ -144,8 +144,10 @@ class Conductivity:
         B = 1.0 / (1.0 + np.exp(mu))
         C = self.hx_boltz * (self.Te - self.Ti)
 
-
-        ll =  dT / A / B / C
+        if dT == 0 or A == 0 or B == 0 or C == 0:
+            ll = 0
+        else: 
+            ll =  dT / A / B / C
         return ll
 
     # Functions for Born
@@ -206,7 +208,7 @@ class Conductivity:
     # Spizter Function
 
     def loglambda_Spitzer(self):
-        ll_floor = 1.0
+        ll_floor = 1
         
         bmax = np.sqrt(self.hx_boltz * self.Te / (4* np.pi * self.hx_qele**2 * self.ne))
         
@@ -218,9 +220,7 @@ class Conductivity:
         return ll
 
 # # LeeMore Function 
-
     def loglambda_LeeMore(self):
-        ll_floor = 1.0
 
         nion = self.ne/self.Z
         R0 = (4*np.pi*nion/3)**(-1./3)
@@ -228,13 +228,14 @@ class Conductivity:
         Tf = self.hx_hbar**2 / (2*self.hx_mele) * (3 * np.pi **2 * self.ne)**(2./3) / self.hx_boltz; 
         debye_len = 1/np.sqrt((4* np.pi * self.hx_qele**2 * self.ne)/(self.hx_boltz*np.sqrt(self.Te**2 + Tf**2)) + 4*np.pi*nion *self.Z**2 *self.hx_qele**2 /(self.hx_boltz*self.Ti) )
         bmax = max(debye_len,R0)
+
         bmin_classic = self.Z * self.hx_qele**2 / (3*self.hx_boltz*self.Te)
 
         bmin_quantum = self.hx_hbar / (2*np.sqrt(3*self.hx_boltz*self.Te*self.hx_mele))
 
         bmin = max(bmin_classic, bmin_quantum)
 
-        ll = max(0.5*np.log((1+(bmax/bmin)**2)), ll_floor)
+        ll = 0.5*np.log((1+(bmax/bmin)**2))
         return ll
     
     def calcLogLambda(self, key):
@@ -281,12 +282,22 @@ class Conductivity:
         K = (self.ne*self.hx_boltz*(self.hx_boltz * self.Te) * tau) / self.hx_mele * A_beta
         return K
     
-    def SpizterConductivity(self, key):
-        ll = self.calcLogLambda(self, key)
+    def SpitzerConductivity(self, key):         
+        ll = Conductivity.calcLogLambda(self, key)
         const = (8/np.pi) ** (3/2) * (self.hx_boltz**(7/2) / (self.hx_qele**4 * (self.hx_mele) ** (1/2)))
         sigma = (1/(1+3.3/self.Z)) * (self.Te**(5/2)/(self.Z*ll))
         return const * sigma
+    
+    def SpitzerElectricConductivity(self, key):
+        tau = Conductivity.eq_time(self, key)
+        sigma = 2 * (self.hx_qele ** 2 * self.ne * tau[0]) / self.hx_mele
+        return sigma
 
+    def LeeMoreElectricConductivity(self, key):
+        tau = Conductivity.eq_time(self, key)
+        A_alpha = 32/3*math.pi ## non-degenrate limit degenerate limit is 1
+        sigma = (2 * (self.hx_qele ** 2 * self.ne * tau[0]) / self.hx_mele) * A_alpha
+        return sigma
             
     def cyclotron_frequency(self, B):
         cyc_freq = self.hx_qele * B / self.calc_beta_eff_approxhx_mele
