@@ -263,7 +263,7 @@ class Conductivity:
         denom = (self.hx_boltz * self.Te) ** (3/2)
         return val * (num / denom), ll
     
-    def LeeMoreConductivity(self, key):
+    def LeeMoreThermalConductivity(self, key):
         mu_div_kT = Conductivity.calc_mu(self)
         tau = Conductivity.eq_time(self, key)[0]
         a1 = 13.5
@@ -282,7 +282,7 @@ class Conductivity:
         K = (self.ne*self.hx_boltz*(self.hx_boltz * self.Te) * tau) / self.hx_mele * A_beta
         return K
     
-    def SpitzerConductivity(self, key):         
+    def SpitzerThermalConductivity(self, key):         
         ll = Conductivity.calcLogLambda(self, key)
         const = (8/np.pi) ** (3/2) * (self.hx_boltz**(7/2) / (self.hx_qele**4 * (self.hx_mele) ** (1/2)))
         sigma = (1/(1+3.3/self.Z)) * (self.Te**(5/2)/(self.Z*ll))
@@ -298,9 +298,28 @@ class Conductivity:
         A_alpha = 32/3*math.pi ## non-degenrate limit degenerate limit is 1
         sigma = (2 * (self.hx_qele ** 2 * self.ne * tau[0]) / self.hx_mele) * A_alpha
         return sigma
+        
+    def CalcElectricConductivity(self, key):
+        if key == "lm":
+            return Conductivity.LeeMoreElectricConductivity(self, key)
+        elif key == "ls":
+            return Conductivity.SpitzerElectricConductivity(self, key)
+        else:
+            print("Error- incorrect formulation")
+            return 0
+     
+    def magneticReynoldsNumber(self, V, L, key):
+        sigma = Conductivity.CalcElectricConductivity(self, key)
+        return L * V * sigma
             
+    def OhmsLaw(self, key, Efield, r):
+        sigma = Conductivity.CalcElectricConductivity(self, key)
+        J = Efield * sigma
+        B = (J * r ) / 2
+        return B
+        
     def cyclotron_frequency(self, B):
-        cyc_freq = self.hx_qele * B / self.calc_beta_eff_approxhx_mele
+        cyc_freq = self.hx_qele * B / self.hx_mele
         return cyc_freq
 
 
