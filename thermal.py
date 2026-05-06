@@ -2,6 +2,8 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
+## This code has a lot of code I have written for differen log lambda formulations as a part of previous research projects. I didn't use most of these functions,
+
 class Conductivity:
 
     def __init__(self, tele, tion, nion, nele, Z, A):
@@ -16,6 +18,7 @@ class Conductivity:
     hx_mele = 9.10938e-28
     hx_boltz = 1.38065e-16
     hx_qele = 4.80320e-10
+    m_proton = 1.6726e-24
     gamma_E = 0.57721566490153286060651209008240243
 
     # Functions for qLB
@@ -265,10 +268,11 @@ class Conductivity:
             
     def eq_time(self, key):
         ll = Conductivity.calcLogLambda(self, key)
-        val = (4/3) * (2 * np.pi / self.hx_mele) ** (1/2)
-        num = self.ne * self.Z * self.hx_qele ** 4 * ll
-        denom = (self.hx_boltz * self.Te) ** (3/2)
-        return val * (num / denom), ll
+        val = (3*self.hx_boltz ** (3/2)) / (8 * (2*np.pi) ** (1/2) * self.hx_qele**4)
+        mion = self.A * self.m_proton
+        num = (self.Te * mion + self.Ti * self.hx_mele) ** (3/2)
+        denom = (mion * self.hx_mele) ** (1/2) * self.Z ** 2 * self.ni * ll
+        return val * (num/denom), ll
     
     def LeeMoreThermalConductivity(self, key):
         mu_div_kT = Conductivity.calc_mu(self)
@@ -296,11 +300,8 @@ class Conductivity:
         return const * sigma
     
     def SpitzerElectricConductivity(self):
-        # tau = Conductivity.eq_time(self, key)
-        const = 3 / (4 * math.sqrt(2*math.pi))
-        denom = self.Z * self.hx_qele**2 * self.hx_mele ** (1/2) * Conductivity.loglambda_Spitzer(self)
-        num = (self.hx_boltz * self.Te) ** (3/2)
-        sigma = const * (num/denom)
+        tau = Conductivity.eq_time(self, "ls")
+        sigma = 2 * (self.hx_qele**2 * self.ne * tau) / (self.hx_mele)
         return sigma
 
     def LeeMoreElectricConductivity(self, key):
