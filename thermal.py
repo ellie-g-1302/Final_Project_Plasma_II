@@ -28,15 +28,22 @@ class Conductivity:
         theta = (self.Te * self.hx_boltz) / fermi_energy
         return theta
     
-    def calc_mu(self):
-        theta = Conductivity.calc_theta(self)
-        A = -3./2. * np.log((theta))
-        B = np.log((4./3./np.sqrt(np.pi)))
-        C = 0.25054 * theta ** (-1.858) + 0.072 * theta ** (-1.858/2.0)
-        D = 1 + 0.25054 * theta ** (-0.858)
-        mu_ichimaru = (A + B + C/D)
-        return -mu_ichimaru
-    
+    ## NOT MY CODE IN THIS BOX IT BELONGS TO (Data-driven Electrical Conductivities of Dense Plasmas, Michael S. Murillo, Frontiers in Physics, 2022)
+    ## I have adapted it to fit in my code
+    ## -------------------------------------------------------------------------------------------------------------------------------------------------------
+    def calc_mu(self):                                                                                                                                      ##
+        '''Ichimaru's fit to the chemical potential: Ichimaru, Volume II, page 87, (3.147)                                                                  ##    
+        input: theta = T/E_F                                                                                                                                ##    
+        ouput: unitless ideal gas chemical potential                                                                                                        ##
+        '''                                                                                                                                                 ##
+        E_F = (0.197326e-4)**2*(3*np.pi**2*self.ne)**(2/3)/(2*511e3)                                                                                        ##
+        theta = self.Te / E_F                                                                                                                               ##    
+        A = 0.25954                                                                                                                                         ##     
+        B = 0.072                                                                                                                                           ##        
+        b = 0.858                                                                                                                                           ##    
+                                                                                                                                                            ##    
+        return -1.5*np.log(theta) + np.log(4/(3*np.sqrt(np.pi))) + (A*theta**(-b-1) + B*theta**(-b/2-1/2))/(1+ A*theta**(-b))                               ##
+    ## --------------------------------------------------------------------------------------------------------------------------------------------------------
     def calc_U_one(self):
         theta = Conductivity.calc_theta(self)
         mu = Conductivity.calc_mu(self)
@@ -288,9 +295,12 @@ class Conductivity:
         sigma = (1/(1+3.3/self.Z)) * (self.Te**(5/2)/(self.Z*ll))
         return const * sigma
     
-    def SpitzerElectricConductivity(self, key):
-        tau = Conductivity.eq_time(self, key)
-        sigma = 2 * (self.hx_qele ** 2 * self.ne * tau[0]) / self.hx_mele
+    def SpitzerElectricConductivity(self):
+        # tau = Conductivity.eq_time(self, key)
+        const = 3 / (4 * math.sqrt(2*math.pi))
+        denom = self.Z * self.hx_qele**2 * self.hx_mele ** (1/2) * Conductivity.loglambda_Spitzer(self)
+        num = (self.hx_boltz * self.Te) ** (3/2)
+        sigma = const * (num/denom)
         return sigma
 
     def LeeMoreElectricConductivity(self, key):
